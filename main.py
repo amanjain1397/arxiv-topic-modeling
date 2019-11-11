@@ -23,10 +23,10 @@ parser = argparse.ArgumentParser(
 #Arguments related to harvesting data 
 
 parser.add_argument('--endpoint', type=str, default = 'http://export.arxiv.org/oai2',help='The endpoint of OAI interface')
-parser.add_argument('--metadataPrefix', type=str, default = 'oai_dc',help='')
-parser.add_argument('--harvestSet', type=str, default = 'cs',help='')
-parser.add_argument('--from_when', type=str, default = '2019-11-01', help='yyyy/mm/dd')
-parser.add_argument('--until_when', type=str, default = '', help='yyyy/mm/dd, blank means today\'s date')
+parser.add_argument('--metadataPrefix', type=str, default = 'oai_dc',help='the prefix identifying the metadata format')
+parser.add_argument('--harvestSet', type=str, default = 'cs',help='a set for selective harvesting')
+parser.add_argument('--from_when', type=str, default = '2019-11-01', help='the earliest timestamp of the records, format : yyyy/mm/dd')
+parser.add_argument('--until_when', type=str, default = '', help='the latest timestamp of the records, format: yyyy/mm/dd, blank means today\'s date')
 
 #Arguments related to topic modeling
 parser.add_argument('--num_topics', type=int,  default = 30, help='Number of topics to be found')
