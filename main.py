@@ -1,211 +1,85 @@
-import pickle
-
-import pandas as pd
-import numpy as np
-import glob
-
-import tqdm
-
-import pyLDAvis.gensim
-pyLDAvis.enable_notebook()
-
 import os
 from os import path
+import glob
+import tqdm
+import argparse
+import sys
+from models.Harvester import Harvester
+import models.preprocess_text
+from models.Lda import LDA
 
-from gensim import corpora 
-import recorder
+import pyLDAvis.gensim
+#pyLDAvis.enable_notebook()
 
-import _pickle as cPickle
+#from gensim import corpora
 
-def creator(): 
-    files = pd.Series(glob.glob('./xml/*.xml'))
-    file_nums = files.str.findall(r'response(\d+)\.xml').apply(np.squeeze).astype('uint16').sort_values().reset_index(drop = True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(BASE_DIR)
+
+parser = argparse.ArgumentParser(
+    # ... other options ...
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+#Arguments related to harvesting data 
+
+parser.add_argument('--endpoint', type=str, default = 'http://export.arxiv.org/oai2',help='The endpoint of OAI interface')
+parser.add_argument('--metadataPrefix', type=str, default = 'oai_dc',help='')
+parser.add_argument('--harvestSet', type=str, default = 'cs',help='')
+parser.add_argument('--from_when', type=str, default = '2019-11-01', help='yyyy/mm/dd')
+parser.add_argument('--until_when', type=str, default = '', help='yyyy/mm/dd, blank means today\'s date')
+
+#Arguments related to topic modeling
+parser.add_argument('--num_topics', type=int,  default = 30, help='Number of topics to be found')
+parser.add_argument('--chunksize', type=int,  default = 400)
+parser.add_argument('--passes', type=int,  default= 4)
+parser.add_argument('--visualisation', type = bool, default = True, help = 'Topic visualisation using pyLDAvis')
 
 
-    try:
-        with open('./pkl/main/fileDumpCounter.pickle', 'rb') as handle:
-            fileDumpCounter = pickle.load(handle)
-            handle.close()
-            
-            nums = file_nums[file_nums > fileDumpCounter]
-            #print(nums)        
+FLAGS = parser.parse_args()
 
-            if(len(nums) != 0):
-                with open('./pkl/main/recDict.pickle', 'rb') as handle1, open('./pkl/main/flag1.pickle', 'rb') as handle2, open('./pkl/main/combined_list.pickle', 'rb') as handle3, open('./pkl/main/id_list.pickle', 'rb') as handle4:
-                    recDict = cPickle.load(handle1)
-                    flag1 = cPickle.load(handle2)
-                    combined_list = cPickle.load(handle3)
-                    id_list = cPickle.load(handle4)
+endpoint = FLAGS.endpoint
+metadataPrefix = FLAGS.metadataPrefix
+harvestSet = FLAGS.harvestSet
+from_when = FLAGS.from_when
+until_when = FLAGS.until_when
 
-                handle1.close()
-                handle2.close()
-                handle3.close()
-                handle4.close()
+num_topics = FLAGS.num_topics
+chunksize = FLAGS.chunksize
+passes = FLAGS.passes
+visualisation = FLAGS.visualisation
 
-                for num in tqdm.tqdm(nums):
-                    #fileDumpCounter += 1
-                    recDict, flag1, id_list, combined_list = recorder.dictRecords('./xml/response' + str(num) + '.xml', flag1, recDict, id_list, combined_list)            
-            
-            try:
-                fileDumpCounter = max(nums)
-                
-                #flag1 is the actual record number in the dictionary. Record nums : [0, inf]
-                #flag1 is equal to  len(recDict - 1)
-
-                with open('./pkl/main/recDict.pickle', 'wb') as handle1:
-                    cPickle.dump(recDict, handle1, protocol = pickle.HIGHEST_PROTOCOL)
-
-                with open('./pkl/main/flag1.pickle', 'wb') as handle2:
-                    cPickle.dump(flag1, handle2, protocol=pickle.HIGHEST_PROTOCOL)
-
-                '''with open('./pkl/main/abstract_list.pickle', 'wb') as handle3:
-                    cPickle.dump(abstract_list, handle3, protocol = pickle.HIGHEST_PROTOCOL)'''
-                
-                with open('./pkl/main/combined_list.pickle', 'wb') as handle3:
-                    cPickle.dump(combined_list, handle3, protocol = pickle.HIGHEST_PROTOCOL)
-                    
-                with open('./pkl/main/id_list.pickle', 'wb') as handle4:
-                    cPickle.dump(id_list, handle4, protocol=pickle.HIGHEST_PROTOCOL)
-
-                with open('./pkl/main/fileDumpCounter.pickle', 'wb') as handle5:
-                        pickle.dump(fileDumpCounter, handle5, protocol=pickle.HIGHEST_PROTOCOL)
-
-                '''with open('./pkl/main/title_list.pickle', 'wb') as handle6:
-                        pickle.dump(title_list, handle6, protocol=pickle.HIGHEST_PROTOCOL)'''    
-                handle1.close()
-                handle2.close()
-                handle3.close()
-                handle4.close()
-                handle5.close()
-                #handle6.close()
-                            
-            except ValueError:
-                print('Dumping file counter!')
-                with open('./pkl/main/fileDumpCounter.pickle', 'wb') as handle:
-                        pickle.dump(fileDumpCounter, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                handle.close()
-
-    except:
-            #fileDumpCounter = -1
-            print('No prev dict found. Creating a new one!')
-            recDict = {}
-            flag1 = -1
-            combined_list = []
-            id_list = []
-            
-            for num in tqdm.tqdm(file_nums):
-                recDict, flag1, id_list, combined_list = recorder.dictRecords('./xml/response' + str(num) + '.xml', flag1, recDict, id_list, combined_list)
-
-            try:
-                fileDumpCounter = max(file_nums)
-                
-                with open('./pkl/main/recDict.pickle', 'wb') as handle1:
-                    cPickle.dump(recDict, handle1, protocol = pickle.HIGHEST_PROTOCOL)
-
-                with open('./pkl/main/flag1.pickle', 'wb') as handle2:
-                    cPickle.dump(flag1, handle2, protocol=pickle.HIGHEST_PROTOCOL)
-
-                '''with open('./pkl/main/abstract_list.pickle', 'wb') as handle3:
-                    cPickle.dump(abstract_list, handle3, protocol = pickle.HIGHEST_PROTOCOL)'''
-
-                with open('./pkl/main/combined_list.pickle', 'wb') as handle3:
-                    cPickle.dump(combined_list, handle3, protocol = pickle.HIGHEST_PROTOCOL)
-
-                with open('./pkl/main/id_list.pickle', 'wb') as handle4:
-                    cPickle.dump(id_list, handle4, protocol=pickle.HIGHEST_PROTOCOL)
-
-                with open('./pkl/main/fileDumpCounter.pickle', 'wb') as handle5:
-                        pickle.dump(fileDumpCounter, handle5, protocol=pickle.HIGHEST_PROTOCOL)
-
-                '''with open('./pkl/main/title_list.pickle', 'wb') as handle6:
-                        pickle.dump(title_list, handle6, protocol=pickle.HIGHEST_PROTOCOL)'''    
-                
-                handle1.close()
-                handle2.close()
-                handle3.close()
-                handle4.close()
-                handle5.close()
-                #handle6.close()
-                
-            except ValueError:
-                print('No .xml files to write into dictionary!')
-
-def show_topics():
-    if(path.exists('./models/lda.pickle')):
-        with open('./models/lda.pickle', 'rb') as handle:
-                lda = pickle.load(handle)
-                handle.close()
-        return lda.show_topics(-1)
-    else:
-        print('No model present to show topics for!')
+if __name__ == "__main__":
     
+    ###----Harvesting the data----###
 
-def visualise_topics():
-    if(path.exists('./models/lda.pickle')):
-        with open('./models/lda.pickle', 'rb') as handle:
-            lda = pickle.load(handle)
-            handle.close()
-                
-        try:
-            with open('./text/corpus.pickle', 'rb') as handle:
-
-                corpus = pickle.load(handle)
-                dictionary = corpora.Dictionary.load('./text/combined.dict')
-                handle.close()
-
-                vis = pyLDAvis.gensim.prepare(lda, corpus, dictionary)
-                return vis
-        except:
-            print('Either corpus or dictionary not present.')
-            return
-    else:
-        print('No model present to visulaise topics of.')
+    #First we harvest the data from the arXiv e-print repository
+    h = Harvester(endpoint, metadataPrefix, harvestSet, from_when, until_when)
     
+    #Issues a ListRecords request 
+    h.responseCollector()
 
-
-def pklInfo():
+    #Retreiving the .xml files of the records
+    h.recordCollector()
     
-    with open('./pkl/harvest/flag.pickle', 'rb') as handle:
-        flag = pickle.load(handle)
-        print('flag : ', flag)
-        handle.close()
-        
-    with open('./pkl/harvest/today.pickle', 'rb') as handle:
-        today = pickle.load(handle)
-        print('today : ', today)
-        handle.close()
+    #Making list of tokensied abstracts
+    h.createCorpus()
 
-    with open('./pkl/main/flag1.pickle', 'rb') as handle:
-        flag1 = pickle.load(handle)
-        print('flag1 : ', flag1)
-        handle.close()
+
+    ###----Topic modeling in the corpus----### 
     
-    with open('./pkl/main/recDict.pickle', 'rb') as handle:
-        recDict = pickle.load(handle)
-        print('Length of recDict : ', len(recDict))
-        handle.close()
+    #descriptions - the list of tokenised documents
+    documents = h.descriptions
 
-    '''with open('./pkl/main/abstract_list.pickle', 'rb') as handle:
-        abstract_list = pickle.load(handle)
-        print('Length of abstract_list : ', len(abstract_list))
-        handle.close()'''
-
-    with open('./pkl/main/id_list.pickle', 'rb') as handle:
-        id_list = pickle.load(handle)
-        print('Length of id_list : ', len(id_list))
-        handle.close()
-
-    with open('./pkl/main/fileDumpCounter.pickle', 'rb') as handle:
-        fileDumpCounter = pickle.load(handle)
-        print('fileDumpCounter : ', fileDumpCounter)
-        handle.close()    
+    #Instantiating the Gensim LDA model
+    lda = LDA(documents)
     
-    with open('./pkl/main/combined_list.pickle', 'rb') as handle:
-        combined_list = pickle.load(handle)
-        print('Length of combined_list : ', len(combined_list))
-        handle.close()
+    #Generating the corpus
+    lda.createCorpus()
+
+    #Training the LDA model
+    lda.train_lda(num_topics, chunksize, passes)
     
-    with open('./pkl/lda/flag2.pickle', 'rb') as handle:
-        flag2 = pickle.load(handle)
-        print('flag2 : ', flag2)
-        handle.close()
+    if(visualisation):
+        #Visualising the found topics using pyLDAvis
+        #index.html is stored at ./index.html
+        lda.visualiseTopics()

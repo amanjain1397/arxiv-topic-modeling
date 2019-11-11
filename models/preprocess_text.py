@@ -1,6 +1,3 @@
-#Parses the .xml files in ./xml and creates (or updates) the 1) dictionary and 2) lists of data from the data parsed from the .xml file 
-
-import xml.etree.ElementTree as ET
 import re
 import string
 
@@ -11,67 +8,13 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 
 from nltk.corpus import stopwords
-nltk.download('wordnet')
+'''nltk.download('wordnet')
 nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('stopwords')
+nltk.download('averaged_perceptron_tagger')'''
+
 stopwords = set(stopwords.words('english'))
 
-
-def dictRecords(xmlfile, flag1, recDict, id_list, combined_list):
-    
-    #Shorthands
-    OAI = '{http://www.openarchives.org/OAI/2.0/}'
-    OAI2 = '{http://www.openarchives.org/OAI/2.0/oai_dc/}'
-    PURL = '{http://purl.org/dc/elements/1.1/}'
-    
-    #create element tree object
-    tree = ET.parse(xmlfile)
-    
-    #get root element
-    root = tree.getroot()
-    
-    for item in root.findall('./' + OAI + 'ListRecords/'):
-        #print(flag1)
-        flag1 = flag1 + 1
-        recDict[flag1] = {}
- 
-        #Storing the ID from the header
-        for idfier in item.findall('./'+ OAI + 'header/' + OAI + 'identifier'):
-            recDict[flag1]['id'] = re.sub('\\n', '', idfier.text)
-            id_list.append(recDict[flag1]['id'])
-
-        for metadata in item.findall('./' + OAI + 'metadata'):
-
-            for dc in metadata.findall('./' + OAI2 + 'dc'):
-
-                #For storing the title of the record
-                for title in dc.findall('./' + PURL + 'title'):
-                    recDict[flag1]['title'] = title.text
-                    ti = preprocess_dict(recDict[flag1]['title']).split() #Preprocessing the title before storing it.
-
-                #For storing the processed_description (abstract) of the record
-                i = 0
-                for descrip in dc.findall('./' + PURL + 'description'):
-                    i += 1
-                    if(i == 1):
-                        txt = re.sub('\\n', ' ', descrip.text)
-                        recDict[flag1]['abstract'] = txt
-                        ab = preprocess_dict(recDict[flag1]['abstract']).split() #Preprocessing the abstract before storing it.
-                 
-                combined_list.append(ab + ti)
-
-    if(len(recDict) != len(combined_list)):
-        recDict.pop(flag1, None)
-        return recDict, flag1 - 1, id_list, combined_list
-    else:
-        return recDict, flag1, id_list, combined_list 
-    #_ = abstract_list.pop()
-    #_ = id_list.pop()
-    
-def preprocess_dict(text):
-    
-    text = re.sub(r'\([^)]*\)', '', text)
+def preprocess_text(text):
 
     '''#Removing instances like (SGD), (ANN) etc
     text = re.sub(r'[A-Z]{2,}', '', text)
@@ -190,5 +133,3 @@ class LemmatizationWithPOSTagger(object):
         # convert into feature set of [('What', 'What', ['WP']), ('can', 'can', ['MD']), ... ie [original WORD, Lemmatized word, POS tag]
         pos_tokens = [ [(word, lemmatizer.lemmatize(word,self.get_wordnet_pos(pos_tag)), [pos_tag]) for (word,pos_tag) in pos] for pos in pos_tokens]
         return pos_tokens
-    
-
