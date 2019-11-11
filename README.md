@@ -59,3 +59,6 @@ We will harvest the metadata from 2019-11-01 to 2019-11-05 for the example using
 python main.py --from_when 2019-11-01 --until_when 2019-11-05 --harvestSet cs
 ```
  The pyLDAvis visualisation is exported as **./index.html**.
+ 
+ ### More Info
+Learn more about Open Archives Initiative [here](https://www.openarchives.org/). Learn about Sickle from [here](https://sickle.readthedocs.io/en/latest/).
